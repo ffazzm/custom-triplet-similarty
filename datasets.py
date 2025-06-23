@@ -76,14 +76,16 @@ class SiameseMNIST(Dataset):
         return len(self.mnist_dataset)
     
 class TripletMMCDataset(Dataset):
-    def __init__(self, dataframe: pd.DataFrame, transform=None, train=True, train_model=True):
+    def __init__(self, dataframe: pd.DataFrame, transform=None, train=True, train_model=False):
         self.df = dataframe.reset_index(drop=True)
         self.transform = transform
         self.train = train
 
         if train_model:
+            print("Training on model")
             self.labels = self.df['model_encoded'].values
         else:
+            print("Training on make")
             self.labels = self.df['make_encoded'].values
 
         self.label_to_indices = {
