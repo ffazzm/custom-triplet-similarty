@@ -1,6 +1,26 @@
 import torch.nn as nn
 import torch.nn.functional as F
+import torchvision
+import torch
 
+class SSLPretrainedNet(nn.Module):
+    def __init__(self, model_path):
+        efficientnetb0_new = torchvision.models.efficientnet_b0()
+
+        # note that we need to create exactly the same backbone in order to load the weights
+        backbone_new = nn.Sequential(*list(efficientnetb0_new.children())[:-1])
+
+        ckpt = torch.load(model_path)
+        backbone_new.load_state_dict(ckpt["efficientnetb0_parameters"])
+
+        self.embeeding_net = backbone_new # load the model in a new file for inference
+
+    def forward(self, x):
+        output = self.embeeding_net(x).flatten(start_dim=1)
+        return output
+
+    def get_embedding(self, x):
+        return self.forward(x)
 
 class EmbeddingNet(nn.Module):
     def __init__(self):
