@@ -3,7 +3,7 @@ from PIL import Image
 
 from torch.utils.data import Dataset
 from torch.utils.data.sampler import BatchSampler
-
+import pandas as pd
 
 class SiameseMNIST(Dataset):
     """
@@ -74,6 +74,71 @@ class SiameseMNIST(Dataset):
 
     def __len__(self):
         return len(self.mnist_dataset)
+    
+class TripletMMCDataset(Dataset):
+    def __init__(self, dataframe: pd.DataFrame, transform=None, train=True, train_model=True):
+        self.df = dataframe.reset_index(drop=True)
+        self.transform = transform
+        self.train = train
+
+        if train_model:
+            self.labels = self.df['model_encoded'].values
+        else:
+            self.labels = self.df['make_encoded'].values
+
+        self.label_to_indices = {
+            label: np.where(self.labels == label)[0]
+            for label in np.unique(self.labels)
+        }
+
+        if not train:
+            random_state = np.random.RandomState(29)
+            self.test_triplets = [
+                [
+                    i,
+                    random_state.choice(self.label_to_indices[self.labels[i]]),
+                    random_state.choice(self.label_to_indices[
+                        random_state.choice(list(set(self.label_to_indices.keys()) - {self.labels[i]}))
+                    ])
+                ]
+                for i in range(len(self.df))
+            ]
+
+    def __getitem__(self, index):
+        if self.train:
+            anchor_path = self.df.loc[index, 'path']
+            anchor_label = self.labels[index]
+
+            # Select positive (same class, different image)
+            positive_index = index
+            while positive_index == index:
+                positive_index = np.random.choice(self.label_to_indices[anchor_label])
+            positive_path = self.df.loc[positive_index, 'path']
+
+            # Select negative (different class)
+            negative_label = np.random.choice(list(set(self.label_to_indices.keys()) - {anchor_label}))
+            negative_index = np.random.choice(self.label_to_indices[negative_label])
+            negative_path = self.df.loc[negative_index, 'path']
+
+        else:
+            a_idx, p_idx, n_idx = self.test_triplets[index]
+            anchor_path = self.df.loc[a_idx, 'path']
+            positive_path = self.df.loc[p_idx, 'path']
+            negative_path = self.df.loc[n_idx, 'path']
+
+        img1 = Image.open(anchor_path).convert("RGB")
+        img2 = Image.open(positive_path).convert("RGB")
+        img3 = Image.open(negative_path).convert("RGB")
+
+        if self.transform:
+            img1 = self.transform(img1)
+            img2 = self.transform(img2)
+            img3 = self.transform(img3)
+
+        return (img1, img2, img3), []
+
+    def __len__(self):
+        return len(self.df)
 
 
 class TripletMNIST(Dataset):
