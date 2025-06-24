@@ -122,11 +122,19 @@ class TripletMMCDataset(Dataset):
             negative_index = np.random.choice(self.label_to_indices[negative_label])
             negative_path = self.df.loc[negative_index, 'path']
 
+            a_label = self.df.loc[index, 'model']
+            p_label = self.df.loc[positive_index, 'model']
+            n_label = self.df.loc[negative_index, 'model']
+
         else:
             a_idx, p_idx, n_idx = self.test_triplets[index]
             anchor_path = self.df.loc[a_idx, 'path']
             positive_path = self.df.loc[p_idx, 'path']
             negative_path = self.df.loc[n_idx, 'path']
+
+            a_label = self.df.loc[a_idx, 'model']
+            p_label = self.df.loc[p_idx, 'model']  
+            n_label = self.df.loc[n_idx, 'model']
 
         img1 = Image.open(anchor_path).convert("RGB")
         img2 = Image.open(positive_path).convert("RGB")
@@ -137,7 +145,7 @@ class TripletMMCDataset(Dataset):
             img2 = self.transform(img2)
             img3 = self.transform(img3)
 
-        return (img1, img2, img3), []
+        return (img1, img2, img3), (a_label, p_label, n_label)
 
     def __len__(self):
         return len(self.df)

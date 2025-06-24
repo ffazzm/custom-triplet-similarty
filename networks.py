@@ -45,6 +45,31 @@ class EmbeddingNet(nn.Module):
 
     def get_embedding(self, x):
         return self.forward(x)
+    
+class EfficientNetEmbeddingNet(nn.Module):
+    def __init__(self, embedding_dim=512):
+        super(EfficientNetEmbeddingNet, self).__init__()
+        efficientnetb0_new = torchvision.models.efficientnet_b0()
+
+        self.backbone = nn.Sequential(*list(efficientnetb0_new.children())[:-1])
+
+        ckpt = torch.load("simclr_efficientnetb0_512_model.pth", map_location='cpu')  # adjust if GPU
+        self.backbone.load_state_dict(ckpt["efficientnetb0_parameters"])
+
+        self.embedding = nn.Sequential(
+            nn.Flatten(),              
+            nn.Linear(1280, 512),
+            nn.ReLU(),
+            nn.Linear(512, embedding_dim)
+        )
+
+    def forward(self, x):
+        x = self.backbone(x)        
+        x = self.embedding(x)     
+        return x
+
+    def get_embedding(self, x):
+        return self.forward(x)
 
 
 class EmbeddingNetL2(EmbeddingNet):
